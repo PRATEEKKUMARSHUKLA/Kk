@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        textarea {
+            width: 80%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        select {
+            padding: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <textarea id="textInput" placeholder="Type your text here..."></textarea>
+        <select id="voiceSelect"></select>
+        <button onclick="speakText()">Speak</button>
+        <a id="downloadLink" style="display: none;" download="speech.wav">Download</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            populateVoiceList();
+        });
+
+        function populateVoiceList() {
+            const voicesSelect = document.getElementById('voiceSelect');
+            const voices = window.speechSynthesis.getVoices();
+
+            voices.forEach(function (voice) {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = voice.name;
+                voicesSelect.appendChild(option);
+            });
+        }
+
+        function speakText() {
+            const textInput = document.getElementById('textInput').value;
+            const voiceSelect = document.getElementById('voiceSelect');
+            const selectedVoice = voiceSelect.value;
+
+            const utterance = new SpeechSynthesisUtterance(textInput);
+
+            window.speechSynthesis.getVoices().forEach(function (voice) {
+                if (voice.name === selectedVoice) {
+                    utterance.voice = voice;
+                }
+            });
+
+            window.speechSynthesis.speak(utterance);
+
+            // Save speech as an audio file
+            utterance.onend = function () {
+                const blob = new Blob([new Uint8Array([0, 0, 0, 0])]); // workaround for Safari
+                const blobUrl = URL.createObjectURL(blob);
+                const audio = new Audio(blobUrl);
+
+                audio.srcObject = new MediaStream();
+                const mediaRecorder = new MediaRecorder(audio.srcObject);
+
+                mediaRecorder.ondataavailable = function (event) {
+                    if (event.data.size > 0) {
+                        const downloadLink = document.getElementById('downloadLink');
+                        const url = URL.createObjectURL(event.data);
+                        downloadLink.href = url;
+                        downloadLink.style.display = 'block';
+                    }
+                };
+
+                mediaRecorder.onstop = function () {
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                mediaRecorder.stop();
+            };
+        }
+    </script>
+</body>
+</html>
